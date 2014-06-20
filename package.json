@@ -1,0 +1,21 @@
+{
+  "name": "hackerschool-phonebook",
+  "version": "0.0.0",
+  "description": "phonebook execrsise",
+  "main": "phonebook.js",
+  "dependencies": {
+    "sqlite3": "^2.2.3"
+  },
+  "devDependencies": {},
+
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bruslim/hackerschool-phonebook.git"
+  },
+  "author": "",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/bruslim/hackerschool-phonebook/issues"
+  },
+  "homepage": "https://github.com/bruslim/hackerschool-phonebook"
+}
