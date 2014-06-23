@@ -19,7 +19,6 @@ var commands = {
         phonebook.close();
       }
     );
-    //phonebook.close();
   },
   add: function(name, phonenumber, filename) {
     var phonebook = new Phonebook(filename, function(){
@@ -120,7 +119,6 @@ if (args[0] === 'node'){
 
 // assume the first parameter is the command, default to empty string to prevent errors
 var currentCommand = (args[0] || '').toLowerCase();
-console.log(currentCommand);
 
 // check to see if the command exists, if not just force it back to lookup
 if (!commands[currentCommand]) {
