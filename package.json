@@ -7,7 +7,6 @@
     "sqlite3": "^2.2.3"
   },
   "devDependencies": {},
-
   "repository": {
     "type": "git",
     "url": "https://github.com/bruslim/hackerschool-phonebook.git"

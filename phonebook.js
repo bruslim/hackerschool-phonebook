@@ -5,7 +5,7 @@
 var fs = require('fs');
 var sqlite3 = require('sqlite3').verbose();
 
-var Phonebook = function Phonebook(fileName, next) {
+module.exports = function Phonebook(fileName, next) {
   
   var TABLE_NAME = 'phonebook';
   
@@ -26,6 +26,8 @@ var Phonebook = function Phonebook(fileName, next) {
                db.run('CREATE TABLE phonebook (fullName TEXT, phoneNumber TEXT)', function() {
                  if (next) { next(); }
                });
+             } else {
+               if (next) { next(); }
              }
            });
     return db;
@@ -70,7 +72,6 @@ var Phonebook = function Phonebook(fileName, next) {
                   $fullName: fullName,
                   $phoneNumber: phoneNumber
                 }, function(err, row) {
-                  console.log(this);
                   if (!err) {
                     if (callback) { callback(null, this); }
                   } else {
@@ -189,5 +190,3 @@ var Phonebook = function Phonebook(fileName, next) {
     }
   };
 };
-
-module.exports = Phonebook;

@@ -16,87 +16,93 @@ var commands = {
         } else {
           console.log('Phonebook ' + fileName + ' created successfully.');
         }
+        phonebook.close();
       }
     );
-    phonebook.close();
+    //phonebook.close();
   },
   add: function(name, phonenumber, filename) {
-    var phonebook = new Phonebook(filename);
-    phonebook.add(
-      name,
-      phonenumber,
-      function(err, result) {
-        if (!err) {
-          console.log('Successfully added ' + name + ' into the phonebook.');
-        } else {
-          console.log(err.message);
-        } 
-      
-      }
-    );
+    var phonebook = new Phonebook(filename, function(){
+      phonebook.add(
+        name,
+        phonenumber,
+        function(err, result) {
+          if (!err) {
+            console.log('Successfully added ' + name + ' into the phonebook.');
+          } else {
+            console.log(err.message);
+          } 
+
+        }
+      );
       phonebook.close();
+    });
   },
   lookup: function(name, fileName) {
-    var phonebook = new Phonebook(fileName);    
-    phonebook.find(
-      name,
-      function(err, row) {
-        if (err) {
-          console.log('Name ' + name + ' was not found.');
-        } else {
-          console.log(row.fullName, row.phoneNumber);
-        }
-      }
-    );
-   phonebook.close();
-  },
-  change: function(name, phoneNumber, fileName) {
-    var phonebook = new Phonebook(fileName);
-    phonebook.update(
-      name,
-      phoneNumber,
-      function(err, result) {
-        if (err) {
-          console.log(err.message);
-        } else {
-          if (result.changes > 0) {
-            console.log('Successfully updated ' + name + ' with new number ' + phoneNumber + '.');
+    var phonebook = new Phonebook(fileName, function() {   
+      phonebook.find(
+        name,
+        function(err, row) {
+          if (err) {
+            console.log('Name ' + name + ' was not found.');
           } else {
-            console.log('Error updating ' + name + ' with new number ' + phoneNumber + '.');
+            console.log(row.fullName, row.phoneNumber);
           }
         }
-      }
-    );
-    phonebook.close();
+      );
+     phonebook.close();
+    }); 
+  },
+  change: function(name, phoneNumber, fileName) {
+    var phonebook = new Phonebook(fileName, function() {
+      phonebook.update(
+        name,
+        phoneNumber,
+        function(err, result) {
+          if (err) {
+            console.log(err.message);
+          } else {
+            if (result.changes > 0) {
+              console.log('Successfully updated ' + name + ' with new number ' + phoneNumber + '.');
+            } else {
+              console.log('Error updating ' + name + ' with new number ' + phoneNumber + '.');
+            }
+          }
+        }
+      );
+      phonebook.close();
+    });
   },
   remove: function(name, fileName) {
-    var phonebook = new Phonebook(fileName);
-    phonebook.remove(
-      name,
-      function(err, result) {
-        if (!err && result.changes > 0) {
-          console.log('Successfully removed ' + name + ' from phonebook.');
-        } else {
-          console.log(err.message);
-        }
+    var phonebook = new Phonebook(fileName, function() {
+      phonebook.remove(
+        name,
+        function(err, result) {
+          if (!err && result.changes > 0) {
+            console.log('Successfully removed ' + name + ' from phonebook.');
+          } else {
+            console.log(err.message);
+          }
 
-      }        
-    );
-    phonebook.close();
+        }        
+      );
+      phonebook.close();
+    });
   },
   'reverse-lookup': function(phoneNumber, fileName) {
-    var phonebook = new Phonebook(fileName);
-    phonebook.findByNumber(
-      phoneNumber,
-      function(err, row) {
-        if (err) {
-          console.log(err.message);
-        } else {
-          console.log(row.fullName, row.phoneNumber);
+    var phonebook = new Phonebook(fileName, function() {
+      phonebook.findByNumber(
+        phoneNumber,
+        function(err, row) {
+          if (err) {
+            console.log(err.message);
+          } else {
+            console.log(row.fullName, row.phoneNumber);
+          }
         }
-      }
-    );
-    phonebook.close();
+      );
+      phonebook.close();
+    });
   }
 };
 
