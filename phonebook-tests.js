@@ -3,9 +3,6 @@
 
 var Phonebook = require('./phonebook.js');
 
-var should = require('should');
-
-
 describe('Phonebook', function() {
   
   var phonebook;
@@ -32,6 +29,14 @@ describe('Phonebook', function() {
   describe('#find', function() {
     it('should find jane', function(done) {
       phonebook.find('jane', function(err, row) {
+        if (err) {
+          throw new Error("did throw an exception");
+        }
+        done();
+      });
+    });
+     it('should find Jane', function(done) {
+      phonebook.find('Jane', function(err, row) {
         if (err) {
           throw new Error("did throw an exception");
         }
