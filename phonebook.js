@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 /*jshint node: true*/
 
 'use strict';
@@ -6,181 +5,189 @@
 var fs = require('fs');
 var sqlite3 = require('sqlite3').verbose();
 
-function openDb(fileName) {
-  if (!fs.existsSync(fileName)){
-    console.log("Phonebook " + fileName + " does not exist.");
-    return null;
-  }
-  return new sqlite3.Database(fileName);
-}
-
-function findExact(db, name, onFound, onNotFound){
-  db.get(
-    'SELECT count(*) as rowCount FROM phonebook WHERE name = $name',
-    { $name: name },
-    function(err, row) {
-      if (row && row.rowCount > 0) {
-        onFound();
-      } else {
-        onNotFound();
-      }
-    });
-}
-
-//command store
-var commands = {
-  create: function(fileName) {
-    if (!fs.existsSync(fileName)) {
-      var db = new sqlite3.Database(fileName);
-      db.serialize (function() {
-        db.run("CREATE TABLE phonebook (name TEXT, phonenumber TEXT)");
-      });
-      db.close();
-      console.log('Phonebook ' + fileName + ' created successfully.');
-    } else {
-      console.log('Phonebook ' + fileName + ' already exists');
+var Phonebook = function Phonebook(fileName, next) {
+  
+  var TABLE_NAME = 'phonebook';
+  
+  // init db
+  var _db = (function(){
+    if (fileName !== ':memory:' && !fs.existsSync(fileName)){
+      var err = new Error("Phonebook " + fileName + " does not exist.");
+      if (!next) { throw err; }
+      next(err);
     }
-  },
-  add: function(name, phonenumber, filename) {
-   
-    var db = openDb(filename);
-    if (!db) { return; }
-
-    findExact(db, name, 
-              function found(){
-                console.log('Name ' + name + ' already exists in the phonebook.');
-                db.close();
-              }, 
-              function notFound() {
-                db.run('INSERT INTO phonebook (name, phonenumber) VALUES ($name, $phonenumber)', {
-                  $name: name,
-                  $phonenumber: phonenumber
-                }, function(err, row) {
-                  if (!err) {
-                    console.log('Successfully added ' + name + ' into the phonebook.');
-                  } else {
-                    console.log(err);
-                  } 
-                  db.close();
-                });
-              });
-  },
-  lookup: function(name, fileName) {
- 
-    var db = openDb(fileName);
-    if (!db) { return; } 
-    var found = 0;
-    db.each('SELECT * FROM phonebook WHERE name LIKE $name', 
-      {
-        $name: ( '%' +  name + '%' )
-      }, 
-      function(err, row){
-        if (err) {
-          console.log(err);
-          throw err;
+    var db = new sqlite3.Database(fileName);
+    db.get("SELECT count(*) as rowCount FROM sqlite_master WHERE type='table' AND name = $tableName",
+           {
+             $tableName: TABLE_NAME
+           },
+           function(err,row) {
+             if (row && row.rowCount === 0) {
+               db.run('CREATE TABLE phonebook (fullName TEXT, phoneNumber TEXT)', function() {
+                 if (next) { next(); }
+               });
+             }
+           });
+    return db;
+  })();
+  
+  function findExact(fullName, onFound, onNotFound){
+    _db.get(
+      'SELECT count(*) as rowCount FROM phonebook WHERE fullName = $fullName',
+      { $fullName: fullName },
+      function(err, row) {
+        if (row && row.rowCount > 0) {
+          onFound();
+        } else {
+          onNotFound();
         }
-        console.log(row.name, row.phonenumber);
-        found += 1;
-      },
-      function() {
-        if (found < 1) {
-          console.log('Name ' + name + ' was not found.');
-        }
-        db.close();
       });
-   
-  },
-  change: function(name, phoneNumber, fileName) {
-    var db = openDb(fileName);
-    if (!db) { return; } 
-    findExact(db, name, 
-              function found() {
-                db.run('UPDATE phonebook SET phonenumber = $phonenumber WHERE name = $name',
-                {
-                  $phonenumber : phoneNumber,
-                  $name : name
-                }, function(err) {                  
-                  if(!err && this.changes > 0 ) {
-                    console.log('Successfully updated ' + name + ' with new number ' + phoneNumber + '.');
+  }
+  
+  function NotFoundError(fullName) {
+    return new Error("Name " + fullName + " does not exist.");
+  }
+  
+  
+  return {
+    close: function() {
+      if (_db) {
+        _db.close();
+      }
+    },
+    add: function add(fullName, phoneNumber, callback) {
+      findExact(
+        fullName,
+        function found() {
+          var err = new Error("Name " + fullName + " already exists.");
+          if (!callback) {
+            throw err;
+          }
+          callback(err);
+        },
+        function notFound() {
+          _db.run('INSERT INTO phonebook (fullName, phoneNumber) VALUES ($fullName, $phoneNumber)', {
+                  $fullName: fullName,
+                  $phoneNumber: phoneNumber
+                }, function(err, row) {
+                  console.log(this);
+                  if (!err) {
+                    if (callback) { callback(null, this); }
                   } else {
-                    console.log('Error updating ' + name + ' with new number ' + phoneNumber + '.');
-                    console.log(err);
+                    if (!callback) {
+                      throw err;
+                    }
+                    callback(err);
                   }
                 });
-              },
-              function notFound() {
-                console.log('Name ' + name + ' does not exist in the phonebook.');
-                db.close();
-              });
-  },
-  remove: function(name, fileName) {
-    var db = openDb(fileName);
-    if (!db) { return; } 
-    findExact(db, name, 
+        });
+    },
+    find: function find(query, callback) {
+       var found = 0;
+        _db.each(
+          'SELECT * FROM phonebook WHERE fullName LIKE $query', 
+          {
+            $query: ( '%' +  query + '%' )
+          }, 
+          function(err, row){
+            if (err) {
+              if (!callback) {
+                throw err;
+              }
+              callback(err);
+            }
+            found += 1;
+            if (callback) { 
+              callback(null, row); 
+            }
+          },
+          function() {
+            if (found < 1) {
+              var err = new NotFoundError(query);
+              if (!callback) {
+                throw err;
+              }
+              callback(err);
+            }
+          });
+    },
+    update: function(fullName, phoneNumber, callback) {
+      findExact(
+        fullName, 
+        function found() {
+          _db.run('UPDATE phonebook SET phoneNumber = $phoneNumber WHERE fullName = $fullName',
+          {
+            $phoneNumber : phoneNumber,
+            $fullName : fullName
+          }, function(err) {                  
+            if(!err && this.changes > 0 ) {
+              if (callback) { callback(null, this); }
+            } else {
+              if (!callback) { throw err; }
+              callback(err);
+            }
+          });
+        },
+        function notFound() {
+          var err = new NotFoundError(fullName);
+          if (!callback) {
+            throw err;
+          }
+          callback(err);
+        });
+    },
+    remove: function(fullName, callback) {
+      findExact(
+        fullName, 
               function found() {
-                db.run('DELETE FROM phonebook WHERE name = $name',
-                       { $name: name },
+                _db.run('DELETE FROM phonebook WHERE fullName = $fullName',
+                       { $fullName: fullName },
                        function(err) {
                          if (!err && this.changes > 0) {
-                           console.log('Successfully removed ' + name + ' from phonebook.');
+                           if (callback) {
+                            callback(null, this);
+                           }
                          } else {
-                           console.log('Error removing ' + name + ' from phonebook.');
-                           console.log(err);
+                           if (!callback) {
+                             throw err;
+                           }
+                           callback(err);
                          }
                        });
               },
               function notFound() {
-                console.log('Name ' + name + ' does not exist in the phonebook.');
-                db.close();
+                var err = new NotFoundError(fullName);
+                if (!callback) {
+                  throw err;
+                }
+                callback(err);
               });
-  },
-  'reverse-lookup': function(phoneNumber, fileName) {
-    var db = openDb(fileName);
-    if (!db) { return; }
-    var found = 0;
-    db.each('SELECT * FROM phonebook WHERE phonenumber LIKE $phonenumber',
-            { 
-              $phonenumber: '%' + phoneNumber + '%'
-            },
-            function(err, row) {
-               if (err) {
-                console.log(err);
-                throw err;
-              }
-              console.log(row.name, row.phonenumber);
-              found += 1;
-            },
-            function() {
-              if (found === 0) {
-                console.log('Phone number ' + phoneNumber + ' does not exist.');
-              }
-              db.close();
-            });
-  }
+    },
+    findByNumber: function(query, callback) {
+      var found = 0;
+      _db.each(
+        'SELECT * FROM phonebook WHERE phonenumber LIKE $query',
+        { 
+          $query: '%' + query + '%'
+        },
+        function(err, row) {
+           if (err) {
+             if (!callback) { throw err; }
+             callback(err);
+          }
+          found += 1;
+          callback(null, row);
+        },
+        function() {
+          if (found === 0) {
+            var err = new Error("Phone number " +  query + " was not found.");
+            if (!callback) { throw err; }
+            callback(err);
+          }
+          
+        });
+    }
+  };
 };
 
-
-// copy to local var
-var args = process.argv;
-if (args.length <= 0) {
-  process.exit(1);
-}
-
-// we are running via node, get rid of node and jsfile
-if (args[0] === 'node'){
-  args = args.slice(2, args.length);
-}
-
-// assume the first parameter is the command, default to empty string to prevent errors
-var currentCommand = args[0] || '';
-
-// check to see if the command exists, if not just force it back to lookup
-if (!commands[currentCommand]) {
-  currentCommand = 'lookup';
-} else {
-  // remove the first arg from the list
-  args = args.slice(1,args.length);
-}
-
-// use apply to pass args as an array to the command
-commands[currentCommand].apply(null,args);
+module.exports = Phonebook;
